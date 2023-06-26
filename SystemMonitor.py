@@ -64,6 +64,8 @@ class SystemMonitor(QWidget):
         # GPU Info
         nvml.nvmlInit()
         self.gpu_device = nvml.nvmlDeviceGetHandleByIndex(0)
+        self.gpu_name_info = QLabel()
+        self.gpu_driver_info = QLabel()
         self.gpu_util_progress = QProgressBar()
         self.gpu_util_progress.setMaximum(100)
         self.gpu_mem_progress = QProgressBar()
@@ -71,6 +73,8 @@ class SystemMonitor(QWidget):
         self.gpu_temp_info = QLabel()
 
         vbox4 = QVBoxLayout()
+        vbox4.addWidget(self.gpu_name_info)
+        vbox4.addWidget(self.gpu_driver_info)
         vbox4.addWidget(self.gpu_temp_info)
         vbox4.addWidget(QLabel("Usage:"))
         vbox4.addWidget(self.gpu_util_progress)
@@ -94,6 +98,12 @@ class SystemMonitor(QWidget):
         cpu_percent = int(psutil.cpu_percent(interval=1))
         cpu_info_text = f"Physical cores: {psutil.cpu_count(logical=False)} | Total cores: {psutil.cpu_count(logical=True)}"
         cpufreq = psutil.cpu_freq()
+        if cpufreq.current < 100:
+            cpufreq = cpufreq._replace(
+                current=cpufreq.current * 1000,
+                min=cpufreq.min,
+                max=cpufreq.max,
+            )
         cpu_info_text += f"\nFrequency Range: {cpufreq.min:.2f}Mhz - {cpufreq.max:.2f}Mhz \nCurrent Frequency: {cpufreq.current:.2f}Mhz"
         cpu_info_text += "\n\nCPU Usage Per Core:"
         for i, percentage in enumerate(psutil.cpu_percent(percpu=True, interval=1)):
@@ -112,7 +122,11 @@ class SystemMonitor(QWidget):
         gpu_temp = nvml.nvmlDeviceGetTemperature(
             self.gpu_device, nvml.NVML_TEMPERATURE_GPU
         )
-        self.gpu_temp_info.setText(f"GPU Temperature: {gpu_temp} C \n")
+        gpu_name = nvml.nvmlDeviceGetName(self.gpu_device)
+        gpu_driver_version = nvml.nvmlSystemGetDriverVersion()
+        self.gpu_name_info.setText(f"Name: {gpu_name}")
+        self.gpu_driver_info.setText(f"Driver Version: {gpu_driver_version}")
+        self.gpu_temp_info.setText(f"Temperature: {gpu_temp} C \n")
         self.gpu_util_progress.setValue(gpu_util.gpu)
         self.gpu_mem_progress.setValue(gpu_util.memory)
 
